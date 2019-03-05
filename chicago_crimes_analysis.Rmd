@@ -1,19 +1,211 @@
 ---
-title: "R Notebook"
+title: "Chicago Crimes Analysis."
 output: html_notebook
 ---
 
-This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+Content
+ID - Unique identifier for the record.
 
-Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
+Case Number - The Chicago Police Department RD Number (Records Division Number), which is unique to the incident.
 
-```{r}
-plot(cars)
+Date - Date when the incident occurred. this is sometimes a best estimate.
+
+Block - The partially redacted address where the incident occurred, placing it on the same block as the actual address.
+
+IUCR - The Illinois Unifrom Crime Reporting code. This is directly linked to the Primary Type and Description. See the list of IUCR codes at https://data.cityofchicago.org/d/c7ck-438e.
+
+Primary Type - The primary description of the IUCR code.
+
+Description - The secondary description of the IUCR code, a subcategory of the primary description.
+
+Location Description - Description of the location where the incident occurred.
+
+Arrest - Indicates whether an arrest was made.
+
+Domestic - Indicates whether the incident was domestic-related as defined by the Illinois Domestic Violence Act.
+
+Beat - Indicates the beat where the incident occurred. A beat is the smallest police geographic area – each beat has a dedicated police beat car. Three to five beats make up a police sector, and three sectors make up a police district. The Chicago Police Department has 22 police districts. See the beats at https://data.cityofchicago.org/d/aerh-rz74.
+
+District - Indicates the police district where the incident occurred. See the districts at https://data.cityofchicago.org/d/fthy-xz3r.
+
+Ward - The ward (City Council district) where the incident occurred. See the wards at https://data.cityofchicago.org/d/sp34-6z76.
+
+Community Area - Indicates the community area where the incident occurred. Chicago has 77 community areas. See the community areas at https://data.cityofchicago.org/d/cauq-8yn6.
+
+FBI Code - Indicates the crime classification as outlined in the FBI's National Incident-Based Reporting System (NIBRS). See the Chicago Police Department listing of these classifications at http://gis.chicagopolice.org/clearmap_crime_sums/crime_types.html.
+
+X Coordinate - The x coordinate of the location where the incident occurred in State Plane Illinois East NAD 1983 projection. This location is shifted from the actual location for partial redaction but falls on the same block.
+
+Y Coordinate - The y coordinate of the location where the incident occurred in State Plane Illinois East NAD 1983 projection. This location is shifted from the actual location for partial redaction but falls on the same block.
+
+Year - Year the incident occurred.
+
+Updated On - Date and time the record was last updated.
+
+Latitude - The latitude of the location where the incident occurred. This location is shifted from the actual location for partial redaction but falls on the same block.
+
+Longitude - The longitude of the location where the incident occurred. This location is shifted from the actual location for partial redaction but falls on the same block.
+
+Location - The location where the incident occurred in a format that allows for creation of maps and other geographic operations on this data portal. This location is shifted from the actual location for partial redaction but falls on the same block.
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(fig.width=4, fig.asp=0.3,out.width = "70%",fig.align ="center",echo=FALSE, warning=FALSE, message=FALSE, rows.print=30,cols.print=10)
+
 ```
 
-Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
 
-When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file). 
+```{r load_libs}
+library(tidyverse)
+library(reshape2)
+library(data.table)
+library(tictoc)
+theme_set(theme_bw())
 
-The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+```
+
+```{r}
+df<- fread("/Users/vichuri/VINAY/DATA_SETS/chicago_crimes/Crimes_-_2001_to_present.csv")
+
+names(df)<- printvin::vin_setdfnames(names(df))
+```
+
+The structure of the data...
+
+```{r}
+glimpse(df)
+```
+
+```{r}
+fmt <- "%F %T"
+
+df2<- df%>%head(10)
+
+
+  
+df2 <- df2[, date2:=fasttime::fastPOSIXct(date)]
+
+df2%>%select(date,date2)
+
+
+```
+
+```{r main_updates}
+df$date<-lubridate::mdy_hms(df$date)
+
+df<- df%>%
+  filter(year(date)<2019)
+
+
+```
+
+How many columns have NA values...
+
+```{r}
+tic()
+sapply(df, function(x) sum(is.na(x)))
+toc()
+
+```
+
+Lets see the count of unique values per columns
+```{r}
+tic()
+sapply(df, function(x) length(unique(x)))
+toc()
+
+```
+
+
+Lets check the trend of crimes across the data...
+```{r fig.width=4, fig.asp=0.3}
+df%>%
+  mutate(yyyy=year(date))%>%
+  count(yyyy)%>%
+  ggplot(aes(as.factor(yyyy),n,group=1))+
+  geom_line()+
+  scale_y_continuous(labels=scales::comma_format())+
+  labs(title="Year wise trend of crimes",x="Year",y="Total Crimes")
+
+
+```
+
+Which are the primary crimes in the data...
+```{r }
+df%>%
+  count(primary_type)%>%
+  ggplot(aes(reorder(primary_type,n),n))+
+  geom_col()+
+  coord_flip()+
+  # scale_y_continuous(labels=scales::comma_format())+
+  labs(title="Crime types",x="Type",y="Total Crimes")
+
+
+```
+
+What is the frequency of arrests in the data...
+```{r fig.width=5, fig.asp=0.3}
+# prop.table(table(df$arrest))
+df%>%
+  count(arrest)%>%
+  mutate(props=paste(round(prop.table(n),2)*100,"%"))%>%
+  ggplot(aes(reorder(arrest,n),n))+
+  geom_col()+
+  coord_flip()+
+  geom_label(aes(label=props))+
+  scale_y_continuous(labels=scales::comma_format())+
+  labs(title="Arrests",x="Type",y="Total Crimes")
+
+```
+
+
+Any trends to the arrest category per year
+
+```{r fig.width=5, fig.asp=0.3}
+df%>%
+  filter(arrest==TRUE)%>%
+  mutate(yyyy=year(date))%>%
+  count(yyyy)%>%
+  ggplot(aes(as.factor(yyyy),n,group=1))+
+  geom_line()+
+  scale_y_continuous(labels=scales::comma_format())+
+  labs(title="Year wise trend of crime arrests",x="Year",y="Total Crimes")
+
+```
+
+
+```{r fig.width=5, fig.asp=0.3}
+df%>%
+  mutate(yyyy=year(date))%>%
+  count(yyyy,arrest)%>%
+  ggplot(aes(as.factor(yyyy),n,group=arrest,color=arrest))+
+  geom_line()+
+  scale_y_continuous(labels=scales::comma_format())+
+  labs(title="Year wise trend of crime arrests",x="Year",y="Total Crimes")
+
+```
+
+Lets check on various FBI codes...
+```{r}
+df%>%
+  count(fbi_code)%>%
+  ggplot(aes(reorder(fbi_code,n),n))+
+  geom_col()+
+  coord_flip()+
+  scale_y_continuous(labels=scales::comma_format())+
+  labs(title="Crime by FBI Codes",x="FBI Code",y="Total Crimes")
+
+```
+
+
+
+################### ROUGH WORK##################
+
+```{r}
+df[1,'date']
+df%>%
+  head(5)%>%
+  select(date)%>%
+  mutate(date2=lubridate::mdy_hms(date))
+
+```
 
