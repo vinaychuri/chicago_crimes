@@ -201,6 +201,7 @@ df%>%
   geom_col()+
   coord_flip()+
   scale_y_continuous(labels=scales::comma_format())+
+  geom_label(aes(label=n),size=2)+
   labs(title="Crime by FBI Codes",x="FBI Code",y="Total Crimes")
 
 ```
@@ -230,6 +231,7 @@ df%>%
   geom_col()+
   coord_flip()+
   scale_y_continuous(labels=scales::comma_format())+
+  geom_label(aes(label=n),size=2)+
   labs(title="Crime by FBI Codes",x="FBI Code",y="Total Crimes")
 
 ```
