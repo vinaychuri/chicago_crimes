@@ -64,15 +64,24 @@ theme_set(theme_bw())
 ```
 
 ```{r}
-df<- fread("/Users/vichuri/VINAY/DATA_SETS/chicago_crimes/Crimes_-_2001_to_present.csv")
+file_loca<-"/Users/vinaychuri/VINAY/dataset/chicago_crimes/Crimes_-_2001_to_present.csv"
+# file_loca<-"/Users/vichuri/VINAY/DATA_SETS/chicago_crimes/Crimes_-_2001_to_present.csv"
+
+df<- fread(file_loca)
 
 names(df)<- printvin::vin_setdfnames(names(df))
+
+fbi_code_df<- fread("fbi_codes.csv")
+names(fbi_code_df)<- printvin::vin_setdfnames(names(fbi_code_df))
+
 ```
 
 The structure of the data...
 
 ```{r}
 glimpse(df)
+glimpse(fbi_code_df)
+
 ```
 
 ```{r}
@@ -196,6 +205,79 @@ df%>%
 
 ```
 
+Lets get the full description of the FBI codes
+```{r}
+df%>%
+  count(fbi_code)%>%
+  left_join(.,fbi_code_df%>%select(crime_code,crime_type),by=c("fbi_code"="crime_code"))%>%
+  group_by(crime_type)%>%
+  summarise(n=sum(n))%>%
+  ggplot(aes(reorder(crime_type,n),n))+
+  geom_col()+
+  coord_flip()+
+  scale_y_continuous(labels=scales::comma_format())+
+  labs(title="Crime by FBI Codes",x="FBI Code",y="Total Crimes")
+
+```
+
+```{r}
+df%>%
+  count(fbi_code)%>%
+  left_join(.,fbi_code_df%>%select(crime_code,crime_description),by=c("fbi_code"="crime_code"))%>%
+  group_by(crime_description)%>%
+  summarise(n=sum(n))%>%
+  ggplot(aes(reorder(crime_description,n),n))+
+  geom_col()+
+  coord_flip()+
+  scale_y_continuous(labels=scales::comma_format())+
+  labs(title="Crime by FBI Codes",x="FBI Code",y="Total Crimes")
+
+```
+
+```{r}
+df%>%
+  count(fbi_code)%>%
+  left_join(.,fbi_code_df,by=c("fbi_code"="crime_code"))%>%
+  filter(crime_type=="More serious offenses")%>%
+  group_by(crime_description)%>%
+  summarise(n=sum(n))%>%
+  ggplot(aes(reorder(crime_description,n),n))+
+  geom_col()+
+  coord_flip()+
+  scale_y_continuous(labels=scales::comma_format())+
+  labs(title="Crime by FBI Codes",subtitle = "More serious offenses",x="FBI Code",y="Total Crimes")
+
+```
+
+```{r}
+df%>%
+  count(fbi_code)%>%
+  left_join(.,fbi_code_df,by=c("fbi_code"="crime_code"))%>%
+  filter(crime_type=="Less serious offenses")%>%
+  group_by(crime_description)%>%
+  summarise(n=sum(n))%>%
+  ggplot(aes(reorder(crime_description,n),n))+
+  geom_col()+
+  coord_flip()+
+  scale_y_continuous(labels=scales::comma_format())+
+  labs(title="Crime by FBI Codes",subtitle = "Less serious offenses",x="FBI Code",y="Total Crimes")
+
+```
+
+```{r}
+df%>%
+  count(fbi_code)%>%
+  left_join(.,fbi_code_df,by=c("fbi_code"="crime_code"))%>%
+  filter(crime_type=="Crime related to Property")%>%
+  group_by(crime_description)%>%
+  summarise(n=sum(n))%>%
+  ggplot(aes(reorder(crime_description,n),n))+
+  geom_col()+
+  coord_flip()+
+  scale_y_continuous(labels=scales::comma_format())+
+  labs(title="Crime by FBI Codes",subtitle = "Less serious offenses",x="FBI Code",y="Total Crimes")
+
+```
 
 
 ################### ROUGH WORK##################
